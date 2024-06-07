@@ -39,13 +39,18 @@ async function run() {
       });
       res.status(200).send({ token: token });
     });
-
+//routes for inserting user data on db
     app.post("/user", async (req, res) => {
       const user = req.body;
       const result = await user_collection.insertOne(user);
       res.status(200).send(result);
     });
-    //get request api endpoints
+    //routes for getting all user 
+    app.get('/get_user', async (req, res) => {
+      const result = await user_collection.find().toArray()
+      res.send(result)
+    })
+    //routes for checking is user exist or not in the db
     app.post("/is_user_exist", async (req, res) => {
       const user = req.body;
       const result = await user_collection.findOne(user);
@@ -57,7 +62,7 @@ async function run() {
         res.send({ result, userExist: true });
       }
     });
-
+//routes to insert a survey in db
     app.post("/create_survey", async (req, res) => {
       const {
         title,
@@ -69,6 +74,7 @@ async function run() {
         surveyorEmail,
       } = req.body;
       const createdAt = new Date();
+
       const survey = {
         surveyorEmail,
         title,
@@ -83,12 +89,11 @@ async function run() {
         noCount: 0,
         voter: [],
       };
-      console.log(survey);
 
       const result = await survey_collection.insertOne(survey);
       res.status(200).send(result);
     });
-
+//routes for getting a specific surveyor all survey
     app.get("/surveys/:email", async (req, res) => {
       const email = req.params.email;
       const result = await survey_collection
@@ -96,8 +101,6 @@ async function run() {
         .toArray();
       res.send(result);
     });
-
-    
 //routes for update exiting survey
     app.put("/updateDocument/:id", async (req, res) => {
       const document = req.body;
@@ -115,6 +118,7 @@ async function run() {
       const id = req.params.id;
       const result = await survey_collection.findOne({ _id: new ObjectId(id) });
       res.send(result);
+      console.log(result);
     });
 //routes for getting all the surveys
     app.get("/all_surveys", async (req, res) => {
