@@ -1,6 +1,6 @@
 const express = require("express");
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
@@ -30,7 +30,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const user_collection = client.db("Opinex").collection("users");
-    const survey_collection = client.db('Opinex').collection('surveys')
+    const survey_collection = client.db("Opinex").collection("surveys");
     //post request api endpoints
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -58,22 +58,98 @@ async function run() {
       }
     });
 
-    app.post("/surveys", async (req, res) => {
-      const { title,description,category, questions } = req.body;
+    app.post("/create_survey", async (req, res) => {
+      const {
+        title,
+        category,
+        description,
+        deadline,
+        questionTitle,
+        questionDescription,
+        surveyorEmail,
+      } = req.body;
+      const createdAt = new Date();
       const survey = {
+        surveyorEmail,
         title,
         description,
         category,
-        questions: questions.map((q) => ({ ...q, yesCount: 0, noCount: 0 })),
+        deadline,
+        createdAt,
+        questionTitle,
+        questionDescription,
+        status:'publish',
+        yesCount: 0,
+        noCount: 0,
+        voter: [],
       };
+      console.log(survey);
+
       const result = await survey_collection.insertOne(survey);
+      res.status(200).send(result);
+    });
+
+    app.get("/surveys/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await survey_collection
+        .find({ surveyorEmail: email })
+        .toArray();
       res.send(result);
     });
+
+    
+//routes for update exiting survey
+    app.put("/updateDocument/:id", async (req, res) => {
+      const document = req.body;
+      const {id}=req.params
+      const result = await survey_collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: document,
+        }
+      );
+      res.send(result);
+    });
+//routes for getting single survey by id
+    app.get("/survey/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await survey_collection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+//routes for getting all the surveys
     app.get("/all_surveys", async (req, res) => {
       const surveys = await survey_collection.find().toArray();
       res.send(surveys);
     });
 
+    //routes for count vote and save voter information
+    app.put("/vote/:id", async (req, res) => {
+      const { vote, userName, userEmail } = req.body;
+      const { id } = req.params;
+      const voterInfo = {
+        vote,userName,userEmail
+      }
+      if (vote === "yes") {
+        const result = await survey_collection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $inc: { yesCount: 1 },
+            $push: { voter: voterInfo },
+          }
+        );
+        res.send(result)
+      }
+      if (vote === "no") {
+        const result = await survey_collection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $inc: { noCount: 1 },
+            $push:{voter:voterInfo}
+          },
+          );
+        res.send(result);
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
