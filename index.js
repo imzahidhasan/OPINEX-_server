@@ -39,17 +39,17 @@ async function run() {
       });
       res.status(200).send({ token: token });
     });
-//routes for inserting user data on db
+    //routes for inserting user data on db
     app.post("/user", async (req, res) => {
       const user = req.body;
       const result = await user_collection.insertOne(user);
       res.status(200).send(result);
     });
-    //routes for getting all user 
-    app.get('/get_user', async (req, res) => {
-      const result = await user_collection.find().toArray()
-      res.send(result)
-    })
+    //routes for getting all user
+    app.get("/get_user", async (req, res) => {
+      const result = await user_collection.find().toArray();
+      res.send(result);
+    });
     //routes for checking is user exist or not in the db
     app.post("/is_user_exist", async (req, res) => {
       const user = req.body;
@@ -62,7 +62,7 @@ async function run() {
         res.send({ result, userExist: true });
       }
     });
-//routes to insert a survey in db
+    //routes to insert a survey in db
     app.post("/create_survey", async (req, res) => {
       const {
         title,
@@ -84,7 +84,7 @@ async function run() {
         createdAt,
         questionTitle,
         questionDescription,
-        status:'publish',
+        status: "publish",
         yesCount: 0,
         noCount: 0,
         voter: [],
@@ -93,7 +93,7 @@ async function run() {
       const result = await survey_collection.insertOne(survey);
       res.status(200).send(result);
     });
-//routes for getting a specific surveyor all survey
+    //routes for getting a specific surveyor all survey
     app.get("/surveys/:email", async (req, res) => {
       const email = req.params.email;
       const result = await survey_collection
@@ -101,10 +101,10 @@ async function run() {
         .toArray();
       res.send(result);
     });
-//routes for update exiting survey
+    //routes for update exiting survey
     app.put("/updateDocument/:id", async (req, res) => {
       const document = req.body;
-      const {id}=req.params
+      const { id } = req.params;
       const result = await survey_collection.updateOne(
         { _id: new ObjectId(id) },
         {
@@ -113,14 +113,14 @@ async function run() {
       );
       res.send(result);
     });
-//routes for getting single survey by id
+    //routes for getting single survey by id
     app.get("/survey/:id", async (req, res) => {
       const id = req.params.id;
       const result = await survey_collection.findOne({ _id: new ObjectId(id) });
       res.send(result);
       console.log(result);
     });
-//routes for getting all the surveys
+    //routes for getting all the surveys
     app.get("/all_surveys", async (req, res) => {
       const surveys = await survey_collection.find().toArray();
       res.send(surveys);
@@ -131,8 +131,10 @@ async function run() {
       const { vote, userName, userEmail } = req.body;
       const { id } = req.params;
       const voterInfo = {
-        vote,userName,userEmail
-      }
+        vote,
+        userName,
+        userEmail,
+      };
       if (vote === "yes") {
         const result = await survey_collection.updateOne(
           { _id: new ObjectId(id) },
@@ -141,18 +143,39 @@ async function run() {
             $push: { voter: voterInfo },
           }
         );
-        res.send(result)
+        res.send(result);
       }
       if (vote === "no") {
         const result = await survey_collection.updateOne(
           { _id: new ObjectId(id) },
           {
             $inc: { noCount: 1 },
-            $push:{voter:voterInfo}
-          },
-          );
+            $push: { voter: voterInfo },
+          }
+        );
         res.send(result);
       }
+    });
+    //routes for updating user role
+    app.post("/update_role", async (req, res) => {
+      const data = req.body;
+      console.log(data.id, data.role);
+      const result = await user_collection.updateOne(
+        { _id: new ObjectId(data.id) },
+        {
+          $set: { role: data.role },
+        }
+      );
+      res.send(result);
+    });
+    //routes for update survey status
+    app.post("/update_survey_status", async (req, res) => {
+      const { id, status } = req.body;
+      const result = await survey_collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: status } }
+      );
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error
