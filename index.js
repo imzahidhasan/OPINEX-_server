@@ -177,6 +177,18 @@ async function run() {
       );
       res.send(result);
     });
+    //routes for getting all the participated survey of a user
+    app.post("/get_participated_survey", async (req, res) => {
+      const userInfo = req.body;
+      const result = await survey_collection
+        .find({
+          voter: {
+            $elemMatch: userInfo,
+          },
+        })
+        .toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
