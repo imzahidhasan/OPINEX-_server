@@ -118,7 +118,6 @@ async function run() {
       const id = req.params.id;
       const result = await survey_collection.findOne({ _id: new ObjectId(id) });
       res.send(result);
-      console.log(result);
     });
     //routes for getting all the surveys
     app.get("/all_surveys", async (req, res) => {
@@ -128,13 +127,20 @@ async function run() {
 
     //routes for count vote and save voter information
     app.put("/vote/:id", async (req, res) => {
-      const { vote, userName, userEmail } = req.body;
+      const { vote, comment, userName, userEmail } = req.body;
+      const UserComment = { comment: comment };
       const { id } = req.params;
       const voterInfo = {
         vote,
         userName,
         userEmail,
       };
+      await survey_collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $push: { comment: UserComment },
+        }
+      );
       if (vote === "yes") {
         const result = await survey_collection.updateOne(
           { _id: new ObjectId(id) },
@@ -183,6 +189,32 @@ async function run() {
       const result = await survey_collection
         .find({
           voter: {
+            $elemMatch: userInfo,
+          },
+        })
+        .toArray();
+      res.send(result);
+    });
+    //routes for update report on the post
+    app.put("/report_survey/:id", async (req, res) => {
+      const { id } = req.params;
+      const userInfo = req.body;
+      const result = survey_collection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $push: {
+            reportedBy: userInfo,
+          },
+        }
+      );
+      res.send(result);
+    });
+    //routes for get reported post by user
+    app.post("/reported_by", async (req, res) => {
+      const userInfo = req.body;
+      const result = await survey_collection
+        .find({
+          reportedBy: {
             $elemMatch: userInfo,
           },
         })
