@@ -128,7 +128,7 @@ async function run() {
     //routes for count vote and save voter information
     app.put("/vote/:id", async (req, res) => {
       const { vote, comment, userName, userEmail } = req.body;
-      const UserComment = { comment: comment };
+      const UserComment = { comment: comment, userEmail: userEmail };
       const { id } = req.params;
       const voterInfo = {
         vote,
@@ -219,6 +219,16 @@ async function run() {
           },
         })
         .toArray();
+      res.send(result);
+    });
+    //routes for getting surveys commented by user
+    app.post("/get_commented_surveys", async (req, res) => {
+      const userInfo = req.body;
+      const result = await survey_collection.find({
+        comment: {
+          $elemMatch: userInfo,
+        },
+      }).toArray()
       res.send(result);
     });
   } finally {
