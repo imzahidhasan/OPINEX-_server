@@ -224,11 +224,41 @@ async function run() {
     //routes for getting surveys commented by user
     app.post("/get_commented_surveys", async (req, res) => {
       const userInfo = req.body;
-      const result = await survey_collection.find({
-        comment: {
-          $elemMatch: userInfo,
-        },
-      }).toArray()
+      const result = await survey_collection
+        .find({
+          comment: {
+            $elemMatch: userInfo,
+          },
+        })
+        .toArray();
+      res.send(result);
+    });
+    //routes for getting 6 most voted surveys
+    app.get("/get_features_surveys", async (req, res) => {
+      const result = await survey_collection
+        .aggregate([
+          {
+            $addFields: {
+              totalVotes: { $add: ["$yesCount", "$noCount"] },
+            },
+          },
+          {
+            $sort: { totalVotes: -1 },
+          },
+          {
+            $limit: 6,
+          },
+        ])
+        .toArray();
+      res.send(result);
+    });
+    //routes for getting 6 latest surveys
+    app.get("/get_latest_survey", async (req, res) => {
+      const result = await survey_collection
+        .find()
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .toArray();
       res.send(result);
     });
   } finally {
