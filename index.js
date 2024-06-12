@@ -9,7 +9,11 @@ const stripe = require("stripe")(process.env.STRIPE_SK);
 const app = express();
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://opinex-32b89.firebaseapp.com",
+      "https://opinex-32b89.web.app",
+    ],
   })
 );
 app.use(express.json());
@@ -122,7 +126,7 @@ async function run() {
     });
     //routes for getting all the surveys
     app.get("/all_surveys", async (req, res) => {
-      const surveys = await survey_collection.find().toArray();
+      const surveys = await survey_collection.find({status:'publish'}).toArray();
       res.send(surveys);
     });
     //routes for getting a single survey
@@ -181,10 +185,10 @@ async function run() {
     });
     //routes for update survey status
     app.post("/update_survey_status", async (req, res) => {
-      const { id, status } = req.body;
+      const { id, status, feedbackMessage } = req.body;
       const result = await survey_collection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { status: status } }
+        { $set: { status: status, feedback: feedbackMessage } }
       );
       res.send(result);
     });
@@ -239,28 +243,40 @@ async function run() {
       res.send(result);
     });
     //routes for getting 6 most voted surveys
-    app.get("/get_features_surveys", async (req, res) => {
-      const result = await survey_collection
-        .aggregate([
-          {
-            $addFields: {
-              totalVotes: { $add: ["$yesCount", "$noCount"] },
-            },
-          },
-          {
-            $sort: { totalVotes: -1 },
-          },
-          {
-            $limit: 6,
-          },
-        ])
-        .toArray();
-      res.send(result);
-    });
+   app.get("/get_features_surveys", async (req, res) => {
+     try {
+       const result = await survey_collection
+         .aggregate([
+           {
+             $match: {
+               status: "publish",
+             },
+           },
+           {
+             $addFields: {
+               totalVotes: { $add: ["$yesCount", "$noCount"] },
+             },
+           },
+           {
+             $sort: { totalVotes: -1 },
+           },
+           {
+             $limit: 6,
+           },
+         ])
+         .toArray();
+
+       res.send(result);
+     } catch (error) {
+       console.error("Error fetching surveys:", error);
+       res.status(500).send("Internal Server Error");
+     }
+   });
+
     //routes for getting 6 latest surveys
     app.get("/get_latest_survey", async (req, res) => {
       const result = await survey_collection
-        .find()
+        .find({status:'publish'})
         .sort({ createdAt: -1 })
         .limit(6)
         .toArray();
