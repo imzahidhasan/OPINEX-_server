@@ -32,8 +32,8 @@ const verifyToken = (req, res, next) => {
     if (err) {
       return res.status(403).send({ message: "Invalid or expired token" });
     }
-    req.user = user; // Add the user data to the request object
-    next(); // Proceed to the next middleware or route handler
+    req.user = user; 
+    next(); 
   });
 };
 
@@ -55,6 +55,7 @@ async function run() {
   try {
     const user_collection = client.db("Opinex").collection("users");
     const survey_collection = client.db("Opinex").collection("surveys");
+    const payment_collection = client.db("Opinex").collection("payments");
     //post request api endpoints
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -328,11 +329,45 @@ async function run() {
           enabled: true,
         },
       });
-
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
     });
+
+    //routes for inserting payment info to db
+    app.post("/save-payment", verifyToken, async (req, res) => {
+      try {
+        const { paymentIntentId, amount, currency, user } = req.body;
+
+        // Assuming you have a MongoDB collection named "payments"
+        const payment = {
+          paymentIntentId,
+          amount,
+          currency,
+          userEmail: user.email,
+          userName: user.displayName,
+          timestamp: new Date(),
+        };
+
+        // Save payment information into your database
+        const result = await payment_collection.insertOne(payment);
+
+        res
+          .status(200)
+          .send({
+            message: "Payment information saved successfully",
+            paymentId: result.insertedId,
+          });
+      } catch (error) {
+        console.error("Error saving payment information:", error);
+        res.status(500).send({ error: "Failed to save payment information" });
+      }
+    });
+
+
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
