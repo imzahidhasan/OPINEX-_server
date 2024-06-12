@@ -32,8 +32,8 @@ const verifyToken = (req, res, next) => {
     if (err) {
       return res.status(403).send({ message: "Invalid or expired token" });
     }
-    req.user = user; 
-    next(); 
+    req.user = user;
+    next();
   });
 };
 
@@ -145,7 +145,7 @@ async function run() {
       res.send(result);
     });
     //routes for getting all the surveys
-    app.get("/all_surveys", verifyToken, async (req, res) => {
+    app.get("/all_surveys", async (req, res) => {
       const surveys = await survey_collection
         .find({ status: "publish" })
         .toArray();
@@ -352,22 +352,21 @@ async function run() {
         // Save payment information into your database
         const result = await payment_collection.insertOne(payment);
 
-        res
-          .status(200)
-          .send({
-            message: "Payment information saved successfully",
-            paymentId: result.insertedId,
-          });
+        res.status(200).send({
+          message: "Payment information saved successfully",
+          paymentId: result.insertedId,
+        });
       } catch (error) {
         console.error("Error saving payment information:", error);
         res.status(500).send({ error: "Failed to save payment information" });
       }
     });
 
-
-
-
-
+    //routes for get payment info
+    app.get("/get_payment_info", async (req, res) => {
+      const result =await payment_collection.find().toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
