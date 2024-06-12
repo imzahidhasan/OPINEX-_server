@@ -1,10 +1,11 @@
 const express = require("express");
+const dotenv = require("dotenv");
+dotenv.config();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
-const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
-dotenv.config();
+const stripe = require("stripe")(process.env.STRIPE_SK);
 const app = express();
 app.use(
   cors({
@@ -124,7 +125,12 @@ async function run() {
       const surveys = await survey_collection.find().toArray();
       res.send(surveys);
     });
-
+    //routes for getting a single survey
+    app.get("/get_updated_survey/:id", async (req, res) => {
+      const id = req.params;
+      const result = await survey_collection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
     //routes for count vote and save voter information
     app.put("/vote/:id", async (req, res) => {
       const { vote, comment, userName, userEmail } = req.body;
@@ -165,7 +171,6 @@ async function run() {
     //routes for updating user role
     app.post("/update_role", async (req, res) => {
       const data = req.body;
-      console.log(data.id, data.role);
       const result = await user_collection.updateOne(
         { _id: new ObjectId(data.id) },
         {
@@ -260,6 +265,36 @@ async function run() {
         .limit(6)
         .toArray();
       res.send(result);
+    });
+    //route for update user role
+    app.post("/update_role/:email", async (req, res) => {
+      const role = req.body.role;
+      const email = req.params.email;
+      const result = await user_collection.updateOne(
+        { email: email },
+        {
+          $set: { role: role },
+        }
+      );
+      res.send(result);
+    });
+    //route for payment using stripe
+    app.post("/create-payment-intent", async (req, res) => {
+      const { items } = req.body;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: 1600,
+        currency: "usd",
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
   } finally {
     // Ensures that the client will close when you finish/error
