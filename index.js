@@ -18,6 +18,25 @@ app.use(
 );
 app.use(express.json());
 
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res
+      .status(401)
+      .send({ message: "Access token is missing or invalid" });
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).send({ message: "Invalid or expired token" });
+    }
+    req.user = user; // Add the user data to the request object
+    next(); // Proceed to the next middleware or route handler
+  });
+};
+
 app.get("/", (req, res) => {
   res.send("OPINEX server is running so fast...");
 });
@@ -125,8 +144,10 @@ async function run() {
       res.send(result);
     });
     //routes for getting all the surveys
-    app.get("/all_surveys", async (req, res) => {
-      const surveys = await survey_collection.find({status:'publish'}).toArray();
+    app.get("/all_surveys", verifyToken, async (req, res) => {
+      const surveys = await survey_collection
+        .find({ status: "publish" })
+        .toArray();
       res.send(surveys);
     });
     //routes for getting a single survey
@@ -136,7 +157,7 @@ async function run() {
       res.send(result);
     });
     //routes for count vote and save voter information
-    app.put("/vote/:id", async (req, res) => {
+    app.put("/vote/:id", verifyToken, async (req, res) => {
       const { vote, comment, userName, userEmail } = req.body;
       const UserComment = { comment: comment, userEmail: userEmail };
       const { id } = req.params;
@@ -173,7 +194,7 @@ async function run() {
       }
     });
     //routes for updating user role
-    app.post("/update_role", async (req, res) => {
+    app.post("/update_role", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await user_collection.updateOne(
         { _id: new ObjectId(data.id) },
@@ -184,7 +205,7 @@ async function run() {
       res.send(result);
     });
     //routes for update survey status
-    app.post("/update_survey_status", async (req, res) => {
+    app.post("/update_survey_status", verifyToken, async (req, res) => {
       const { id, status, feedbackMessage } = req.body;
       const result = await survey_collection.updateOne(
         { _id: new ObjectId(id) },
@@ -193,7 +214,7 @@ async function run() {
       res.send(result);
     });
     //routes for getting all the participated survey of a user
-    app.post("/get_participated_survey", async (req, res) => {
+    app.post("/get_participated_survey", verifyToken, async (req, res) => {
       const userInfo = req.body;
       const result = await survey_collection
         .find({
@@ -205,7 +226,7 @@ async function run() {
       res.send(result);
     });
     //routes for update report on the post
-    app.put("/report_survey/:id", async (req, res) => {
+    app.put("/report_survey/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const userInfo = req.body;
       const result = survey_collection.updateOne(
@@ -219,7 +240,7 @@ async function run() {
       res.send(result);
     });
     //routes for get reported post by user
-    app.post("/reported_by", async (req, res) => {
+    app.post("/reported_by", verifyToken, async (req, res) => {
       const userInfo = req.body;
       const result = await survey_collection
         .find({
@@ -231,7 +252,7 @@ async function run() {
       res.send(result);
     });
     //routes for getting surveys commented by user
-    app.post("/get_commented_surveys", async (req, res) => {
+    app.post("/get_commented_surveys", verifyToken, async (req, res) => {
       const userInfo = req.body;
       const result = await survey_collection
         .find({
@@ -243,47 +264,47 @@ async function run() {
       res.send(result);
     });
     //routes for getting 6 most voted surveys
-   app.get("/get_features_surveys", async (req, res) => {
-     try {
-       const result = await survey_collection
-         .aggregate([
-           {
-             $match: {
-               status: "publish",
-             },
-           },
-           {
-             $addFields: {
-               totalVotes: { $add: ["$yesCount", "$noCount"] },
-             },
-           },
-           {
-             $sort: { totalVotes: -1 },
-           },
-           {
-             $limit: 6,
-           },
-         ])
-         .toArray();
+    app.get("/get_features_surveys", async (req, res) => {
+      try {
+        const result = await survey_collection
+          .aggregate([
+            {
+              $match: {
+                status: "publish",
+              },
+            },
+            {
+              $addFields: {
+                totalVotes: { $add: ["$yesCount", "$noCount"] },
+              },
+            },
+            {
+              $sort: { totalVotes: -1 },
+            },
+            {
+              $limit: 6,
+            },
+          ])
+          .toArray();
 
-       res.send(result);
-     } catch (error) {
-       console.error("Error fetching surveys:", error);
-       res.status(500).send("Internal Server Error");
-     }
-   });
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching surveys:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
 
     //routes for getting 6 latest surveys
     app.get("/get_latest_survey", async (req, res) => {
       const result = await survey_collection
-        .find({status:'publish'})
+        .find({ status: "publish" })
         .sort({ createdAt: -1 })
         .limit(6)
         .toArray();
       res.send(result);
     });
     //route for update user role
-    app.post("/update_role/:email", async (req, res) => {
+    app.post("/update_role/:email", verifyToken, async (req, res) => {
       const role = req.body.role;
       const email = req.params.email;
       const result = await user_collection.updateOne(
@@ -295,7 +316,7 @@ async function run() {
       res.send(result);
     });
     //route for payment using stripe
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
       const { items } = req.body;
 
       // Create a PaymentIntent with the order amount and currency
